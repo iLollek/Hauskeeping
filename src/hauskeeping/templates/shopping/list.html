@@ -3,9 +3,26 @@
 {% block title %}Einkaufsliste – Hauskeeping{% endblock %}
 
 {% block content %}
+{% set checked_count = items|selectattr('is_checked')|list|length %}
+{% set total_count = items|length %}
+{% if total_count > 0 %}
+{% set progress = (checked_count / total_count * 100)|round|int %}
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <small class="text-muted">Fortschritt</small>
+        <small class="text-muted">{{ checked_count }} / {{ total_count }}</small>
+    </div>
+    <div class="progress" style="height: 10px;">
+        <div class="progress-bar {% if progress == 100 %}bg-success{% else %}bg-primary{% endif %}"
+             role="progressbar" style="width: {{ progress }}%"
+             aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100">
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3>Einkaufsliste</h3>
-    {% set checked_count = items|selectattr('is_checked')|list|length %}
     {% if checked_count > 0 %}
     <form method="POST" action="{{ url_for('shopping.clear_checked') }}"
           onsubmit="return confirm('Alle abgehakten Artikel entfernen?')">

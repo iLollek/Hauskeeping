@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
@@ -6,6 +7,9 @@ from flask_login import current_user, login_required
 from ..extensions import db
 from ..models.task import Task, TaskCategory
 from ..models.user import User
+from ..services.push_service import send_push_to_user
+
+logger = logging.getLogger(__name__)
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 
@@ -78,6 +82,20 @@ def create():
         )
         db.session.add(task)
         db.session.commit()
+
+        # Push an zugewiesenen User (wenn nicht selbst zugewiesen)
+        if assigned_to and assigned_to != current_user.id:
+            try:
+                formatted_date = due_date.strftime("%d.%m.%Y")
+                send_push_to_user(
+                    assigned_to,
+                    "Neue Aufgabe",
+                    f"{current_user.username} hat eine Aufgabe fuer den "
+                    f"{formatted_date} hinzugefuegt: {title}",
+                    url="/tasks",
+                )
+            except Exception:
+                logger.exception("Push-Benachrichtigung fuer neue Aufgabe fehlgeschlagen.")
 
         flash("Aufgabe erstellt.", "success")
         return redirect(url_for("tasks.task_list"))

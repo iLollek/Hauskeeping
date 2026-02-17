@@ -81,6 +81,15 @@
                             <option value="6" {% if current_user.email_notification_day == 6 %}selected{% endif %}>Sonntag</option>
                         </select>
                     </div>
+                    <hr>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="overdue_reminders_enabled"
+                               name="overdue_reminders_enabled"
+                               {% if current_user.overdue_reminders_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="overdue_reminders_enabled">
+                            Taegliche Erinnerung bei ueberfaelligen Aufgaben (Push)
+                        </label>
+                    </div>
                     <button type="submit" class="btn btn-primary btn-sm">
                         <i class="bi bi-check-circle"></i> Speichern
                     </button>

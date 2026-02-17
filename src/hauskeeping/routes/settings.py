@@ -71,6 +71,9 @@ def update_notifications():
     current_user.push_notifications_enabled = (
         "push_notifications_enabled" in request.form
     )
+    current_user.overdue_reminders_enabled = (
+        "overdue_reminders_enabled" in request.form
+    )
 
     db.session.commit()
     flash("Benachrichtigungseinstellungen wurden gespeichert.", "success")

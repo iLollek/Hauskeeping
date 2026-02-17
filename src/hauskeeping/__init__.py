@@ -56,4 +56,12 @@ def create_app():
 
     register_commands(app)
 
+    # Scheduler initialisieren (nur im Hauptprozess, nicht im Reloader)
+    import os
+
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+        from .scheduler import init_scheduler
+
+        init_scheduler(app)
+
     return app

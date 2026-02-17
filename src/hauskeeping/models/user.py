@@ -24,6 +24,7 @@ class User(UserMixin, db.Model):
     email_notifications_enabled = db.Column(db.Boolean, default=False)
     email_notification_day = db.Column(db.Integer, default=0)  # 0=Mo, 6=So
     push_notifications_enabled = db.Column(db.Boolean, default=False)
+    overdue_reminders_enabled = db.Column(db.Boolean, default=True)
 
     # Beziehungen
     invited_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)

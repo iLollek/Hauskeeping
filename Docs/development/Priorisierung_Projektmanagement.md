@@ -62,7 +62,7 @@ Issue wird einem Release Milestone zugeordnet
         ↓
 Umsetzung durch Maintainer (oder Pull Request aus der Community)
         ↓
-Issue wird mit dem Release geschlossen
+Issue wird geschlossen
 ```
 
 ### Verhalten als Contributor

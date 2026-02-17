@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Einstellungen – Hauskeeping{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h3 class="mb-4"><i class="bi bi-sliders2"></i> Einstellungen</h3>
+
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <strong><i class="bi bi-envelope"></i> E-Mail-Adresse</strong>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('settings.update_email') }}">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">E-Mail-Adresse (optional)</label>
+                        <input type="email" class="form-control" id="email" name="email"
+                               value="{{ current_user.email or '' }}"
+                               placeholder="name@beispiel.de">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-check-circle"></i> Speichern
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <strong><i class="bi bi-key"></i> Passwort aendern</strong>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('settings.update_password') }}">
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label">Aktuelles Passwort</label>
+                        <input type="password" class="form-control" id="current_password"
+                               name="current_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">Neues Passwort</label>
+                        <input type="password" class="form-control" id="new_password"
+                               name="new_password" required minlength="6">
+                        <div class="form-text">Mindestens 6 Zeichen</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password_confirm" class="form-label">Neues Passwort bestaetigen</label>
+                        <input type="password" class="form-control" id="new_password_confirm"
+                               name="new_password_confirm" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-check-circle"></i> Passwort aendern
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <strong><i class="bi bi-bell"></i> Benachrichtigungen</strong>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('settings.update_notifications') }}">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="email_notifications_enabled"
+                               name="email_notifications_enabled"
+                               {% if current_user.email_notifications_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="email_notifications_enabled">
+                            E-Mail-Benachrichtigungen aktivieren
+                        </label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email_notification_day" class="form-label">Benachrichtigungstag</label>
+                        <select class="form-select" id="email_notification_day" name="email_notification_day">
+                            <option value="0" {% if current_user.email_notification_day == 0 %}selected{% endif %}>Montag</option>
+                            <option value="1" {% if current_user.email_notification_day == 1 %}selected{% endif %}>Dienstag</option>
+                            <option value="2" {% if current_user.email_notification_day == 2 %}selected{% endif %}>Mittwoch</option>
+                            <option value="3" {% if current_user.email_notification_day == 3 %}selected{% endif %}>Donnerstag</option>
+                            <option value="4" {% if current_user.email_notification_day == 4 %}selected{% endif %}>Freitag</option>
+                            <option value="5" {% if current_user.email_notification_day == 5 %}selected{% endif %}>Samstag</option>
+                            <option value="6" {% if current_user.email_notification_day == 6 %}selected{% endif %}>Sonntag</option>
+                        </select>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="push_notifications_enabled"
+                               name="push_notifications_enabled"
+                               {% if current_user.push_notifications_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="push_notifications_enabled">
+                            Push-Benachrichtigungen aktivieren
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-check-circle"></i> Speichern
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

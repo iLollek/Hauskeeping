@@ -26,7 +26,7 @@ def dashboard():
 
     tasks = (
         Task.query.filter(Task.due_date >= monday, Task.due_date <= sunday)
-        .order_by(Task.due_date, Task.priority.desc())
+        .order_by(Task.due_date)
         .all()
     )
 

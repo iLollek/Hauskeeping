@@ -4,7 +4,7 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from ..extensions import db
-from ..models.task import Task
+from ..models.task import Task, TaskCategory
 from ..models.user import User
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
@@ -27,7 +27,10 @@ def task_list():
         query = query.filter_by(is_done=True)
 
     tasks = query.order_by(Task.due_date).all()
-    return render_template("tasks/list.html", tasks=tasks, show=show)
+    categories = TaskCategory.query.order_by(TaskCategory.position).all()
+    return render_template(
+        "tasks/list.html", tasks=tasks, show=show, categories=categories
+    )
 
 
 @tasks_bp.route("/create", methods=["GET", "POST"])
@@ -40,30 +43,35 @@ def create():
     POST: Validiert und speichert die neue Aufgabe.
     """
     users = User.query.order_by(User.username).all()
+    categories = TaskCategory.query.order_by(TaskCategory.position).all()
 
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         description = request.form.get("description", "").strip() or None
         due_date_str = request.form.get("due_date", "")
-        priority = request.form.get("priority", "medium")
+        category_id = request.form.get("category_id", type=int) or None
         assigned_to = request.form.get("assigned_to", type=int) or None
         recurrence_rule = request.form.get("recurrence_rule", "").strip() or None
 
         if not title:
             flash("Titel ist erforderlich.", "danger")
-            return render_template("tasks/create.html", users=users)
+            return render_template(
+                "tasks/create.html", users=users, categories=categories
+            )
 
         try:
             due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date()
         except ValueError:
             flash("Ungueltiges Datum.", "danger")
-            return render_template("tasks/create.html", users=users)
+            return render_template(
+                "tasks/create.html", users=users, categories=categories
+            )
 
         task = Task(
             title=title,
             description=description,
             due_date=due_date,
-            priority=priority,
+            category_id=category_id,
             assigned_to=assigned_to,
             created_by=current_user.id,
             recurrence_rule=recurrence_rule,
@@ -74,7 +82,7 @@ def create():
         flash("Aufgabe erstellt.", "success")
         return redirect(url_for("tasks.task_list"))
 
-    return render_template("tasks/create.html", users=users)
+    return render_template("tasks/create.html", users=users, categories=categories)
 
 
 @tasks_bp.route("/<int:task_id>/edit", methods=["GET", "POST"])
@@ -88,12 +96,13 @@ def edit(task_id):
     """
     task = db.get_or_404(Task, task_id)
     users = User.query.order_by(User.username).all()
+    categories = TaskCategory.query.order_by(TaskCategory.position).all()
 
     if request.method == "POST":
         task.title = request.form.get("title", "").strip()
         task.description = request.form.get("description", "").strip() or None
         due_date_str = request.form.get("due_date", "")
-        task.priority = request.form.get("priority", "medium")
+        task.category_id = request.form.get("category_id", type=int) or None
         task.assigned_to = request.form.get("assigned_to", type=int) or None
         task.recurrence_rule = (
             request.form.get("recurrence_rule", "").strip() or None
@@ -101,19 +110,25 @@ def edit(task_id):
 
         if not task.title:
             flash("Titel ist erforderlich.", "danger")
-            return render_template("tasks/edit.html", task=task, users=users)
+            return render_template(
+                "tasks/edit.html", task=task, users=users, categories=categories
+            )
 
         try:
             task.due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date()
         except ValueError:
             flash("Ungueltiges Datum.", "danger")
-            return render_template("tasks/edit.html", task=task, users=users)
+            return render_template(
+                "tasks/edit.html", task=task, users=users, categories=categories
+            )
 
         db.session.commit()
         flash("Aufgabe aktualisiert.", "success")
         return redirect(url_for("tasks.task_list"))
 
-    return render_template("tasks/edit.html", task=task, users=users)
+    return render_template(
+        "tasks/edit.html", task=task, users=users, categories=categories
+    )
 
 
 @tasks_bp.route("/<int:task_id>/toggle", methods=["POST"])
@@ -148,4 +163,86 @@ def delete(task_id):
     db.session.commit()
 
     flash("Aufgabe geloescht.", "success")
+    return redirect(url_for("tasks.task_list"))
+
+
+# --- Kategorie-Verwaltung ---
+
+
+@tasks_bp.route("/categories/add", methods=["POST"])
+@login_required
+def add_category():
+    """Erstellt eine neue Aufgabenkategorie."""
+    name = request.form.get("name", "").strip()
+    color = request.form.get("color", "#6c757d").strip()
+
+    if not name:
+        flash("Kategoriename ist erforderlich.", "danger")
+        return redirect(url_for("tasks.task_list"))
+
+    slug = TaskCategory.make_slug(name)
+
+    existing = TaskCategory.query.filter_by(slug=slug).first()
+    if existing:
+        flash("Eine Kategorie mit diesem Namen existiert bereits.", "warning")
+        return redirect(url_for("tasks.task_list"))
+
+    max_pos = db.session.query(db.func.max(TaskCategory.position)).scalar() or 0
+
+    category = TaskCategory(
+        name=name,
+        slug=slug,
+        color=color,
+        position=max_pos + 1,
+    )
+    db.session.add(category)
+    db.session.commit()
+
+    flash(f'Kategorie "{name}" erstellt.', "success")
+    return redirect(url_for("tasks.task_list"))
+
+
+@tasks_bp.route("/categories/<int:category_id>/edit", methods=["POST"])
+@login_required
+def edit_category(category_id):
+    """Bearbeitet eine bestehende Aufgabenkategorie."""
+    category = db.get_or_404(TaskCategory, category_id)
+
+    name = request.form.get("name", "").strip()
+    color = request.form.get("color", category.color).strip()
+
+    if not name:
+        flash("Kategoriename ist erforderlich.", "danger")
+        return redirect(url_for("tasks.task_list"))
+
+    new_slug = TaskCategory.make_slug(name)
+
+    existing = TaskCategory.query.filter(
+        TaskCategory.slug == new_slug, TaskCategory.id != category_id
+    ).first()
+    if existing:
+        flash("Eine Kategorie mit diesem Namen existiert bereits.", "warning")
+        return redirect(url_for("tasks.task_list"))
+
+    category.name = name
+    category.slug = new_slug
+    category.color = color
+    db.session.commit()
+
+    flash(f'Kategorie "{name}" aktualisiert.', "success")
+    return redirect(url_for("tasks.task_list"))
+
+
+@tasks_bp.route("/categories/<int:category_id>/delete", methods=["POST"])
+@login_required
+def delete_category(category_id):
+    """Loescht eine Aufgabenkategorie. Tasks werden auf keine Kategorie gesetzt."""
+    category = db.get_or_404(TaskCategory, category_id)
+
+    Task.query.filter_by(category_id=category.id).update({"category_id": None})
+
+    db.session.delete(category)
+    db.session.commit()
+
+    flash(f'Kategorie "{category.name}" entfernt.', "success")
     return redirect(url_for("tasks.task_list"))

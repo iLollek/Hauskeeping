@@ -24,11 +24,14 @@
                            value="{{ task.due_date.strftime('%Y-%m-%d') }}" required>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label for="priority" class="form-label">Prioritaet</label>
-                    <select class="form-select" id="priority" name="priority">
-                        <option value="low" {% if task.priority == 'low' %}selected{% endif %}>Niedrig</option>
-                        <option value="medium" {% if task.priority == 'medium' %}selected{% endif %}>Mittel</option>
-                        <option value="high" {% if task.priority == 'high' %}selected{% endif %}>Hoch</option>
+                    <label for="category_id" class="form-label">Kategorie (optional)</label>
+                    <select class="form-select" id="category_id" name="category_id">
+                        <option value="">– Keine –</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if task.category_id == cat.id %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                        {% endfor %}
                     </select>
                 </div>
             </div>

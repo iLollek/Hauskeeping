@@ -21,11 +21,12 @@
                     <input type="date" class="form-control" id="due_date" name="due_date" required>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label for="priority" class="form-label">Prioritaet</label>
-                    <select class="form-select" id="priority" name="priority">
-                        <option value="low">Niedrig</option>
-                        <option value="medium" selected>Mittel</option>
-                        <option value="high">Hoch</option>
+                    <label for="category_id" class="form-label">Kategorie (optional)</label>
+                    <select class="form-select" id="category_id" name="category_id">
+                        <option value="">– Keine –</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
             </div>

@@ -57,7 +57,7 @@
 
         <div class="card mb-4">
             <div class="card-header bg-light">
-                <strong><i class="bi bi-bell"></i> Benachrichtigungen</strong>
+                <strong><i class="bi bi-envelope-at"></i> E-Mail-Benachrichtigungen</strong>
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('settings.update_notifications') }}">
@@ -66,11 +66,11 @@
                                name="email_notifications_enabled"
                                {% if current_user.email_notifications_enabled %}checked{% endif %}>
                         <label class="form-check-label" for="email_notifications_enabled">
-                            E-Mail-Benachrichtigungen aktivieren
+                            Woechentliche Zusammenfassung per E-Mail erhalten
                         </label>
                     </div>
                     <div class="mb-3">
-                        <label for="email_notification_day" class="form-label">Benachrichtigungstag</label>
+                        <label for="email_notification_day" class="form-label">Versandtag</label>
                         <select class="form-select" id="email_notification_day" name="email_notification_day">
                             <option value="0" {% if current_user.email_notification_day == 0 %}selected{% endif %}>Montag</option>
                             <option value="1" {% if current_user.email_notification_day == 1 %}selected{% endif %}>Dienstag</option>
@@ -81,20 +81,235 @@
                             <option value="6" {% if current_user.email_notification_day == 6 %}selected{% endif %}>Sonntag</option>
                         </select>
                     </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="push_notifications_enabled"
-                               name="push_notifications_enabled"
-                               {% if current_user.push_notifications_enabled %}checked{% endif %}>
-                        <label class="form-check-label" for="push_notifications_enabled">
-                            Push-Benachrichtigungen aktivieren
-                        </label>
-                    </div>
                     <button type="submit" class="btn btn-primary btn-sm">
                         <i class="bi bi-check-circle"></i> Speichern
                     </button>
                 </form>
             </div>
         </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <strong><i class="bi bi-phone"></i> Push-Benachrichtigungen</strong>
+            </div>
+            <div class="card-body">
+                <div id="push-not-supported" class="alert alert-warning d-none">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Dein Browser unterstuetzt keine Push-Benachrichtigungen.
+                    <span id="push-ios-hint" class="d-none">
+                        <br><strong>iOS:</strong> Fuege Hauskeeping zuerst zum Homescreen hinzu
+                        (Teilen &rarr; Zum Home-Bildschirm), oeffne die App von dort und versuche es erneut.
+                    </span>
+                </div>
+
+                <div id="push-permission-denied" class="alert alert-danger d-none">
+                    <i class="bi bi-x-circle"></i>
+                    Push-Benachrichtigungen wurden im Browser blockiert.
+                    Bitte erlaube sie in den Browser-Einstellungen und lade die Seite neu.
+                </div>
+
+                <div id="push-controls" class="d-none">
+                    <div id="push-status" class="mb-3">
+                        <span id="push-status-active" class="d-none">
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Aktiv</span>
+                            auf diesem Geraet
+                        </span>
+                        <span id="push-status-inactive" class="d-none">
+                            <span class="badge bg-secondary"><i class="bi bi-circle"></i> Inaktiv</span>
+                            auf diesem Geraet
+                        </span>
+                    </div>
+
+                    <button id="btn-push-enable" class="btn btn-primary btn-sm d-none"
+                            onclick="enablePush()">
+                        <i class="bi bi-bell"></i> Push auf diesem Geraet aktivieren
+                    </button>
+                    <button id="btn-push-disable" class="btn btn-outline-danger btn-sm d-none"
+                            onclick="disablePush()">
+                        <i class="bi bi-bell-slash"></i> Push auf diesem Geraet deaktivieren
+                    </button>
+                </div>
+
+                <div id="push-loading" class="text-muted small">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                    Push-Status wird geprueft...
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var pushControls = document.getElementById("push-controls");
+    var pushNotSupported = document.getElementById("push-not-supported");
+    var pushPermDenied = document.getElementById("push-permission-denied");
+    var pushLoading = document.getElementById("push-loading");
+    var pushIosHint = document.getElementById("push-ios-hint");
+    var btnEnable = document.getElementById("btn-push-enable");
+    var btnDisable = document.getElementById("btn-push-disable");
+    var statusActive = document.getElementById("push-status-active");
+    var statusInactive = document.getElementById("push-status-inactive");
+
+    function isIos() {
+        return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    }
+
+    function isInStandaloneMode() {
+        return window.matchMedia("(display-mode: standalone)").matches ||
+            window.navigator.standalone === true;
+    }
+
+    function showState(state) {
+        pushLoading.classList.add("d-none");
+        pushNotSupported.classList.add("d-none");
+        pushPermDenied.classList.add("d-none");
+        pushControls.classList.add("d-none");
+        btnEnable.classList.add("d-none");
+        btnDisable.classList.add("d-none");
+        statusActive.classList.add("d-none");
+        statusInactive.classList.add("d-none");
+
+        if (state === "not-supported") {
+            pushNotSupported.classList.remove("d-none");
+            if (isIos() && !isInStandaloneMode()) {
+                pushIosHint.classList.remove("d-none");
+            }
+        } else if (state === "denied") {
+            pushPermDenied.classList.remove("d-none");
+        } else if (state === "active") {
+            pushControls.classList.remove("d-none");
+            statusActive.classList.remove("d-none");
+            btnDisable.classList.remove("d-none");
+        } else if (state === "inactive") {
+            pushControls.classList.remove("d-none");
+            statusInactive.classList.remove("d-none");
+            btnEnable.classList.remove("d-none");
+        }
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+        var padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        var base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+        var rawData = window.atob(base64);
+        var outputArray = new Uint8Array(rawData.length);
+        for (var i = 0; i < rawData.length; i++) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    async function init() {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+            showState("not-supported");
+            return;
+        }
+
+        var permission = Notification.permission;
+        if (permission === "denied") {
+            showState("denied");
+            return;
+        }
+
+        try {
+            var registration = await navigator.serviceWorker.ready;
+            var subscription = await registration.pushManager.getSubscription();
+            if (subscription) {
+                showState("active");
+            } else {
+                showState("inactive");
+            }
+        } catch (err) {
+            console.error("Push-Init-Fehler:", err);
+            showState("not-supported");
+        }
+    }
+
+    window.enablePush = async function () {
+        btnEnable.disabled = true;
+        btnEnable.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Wird aktiviert...';
+
+        try {
+            var registration = await navigator.serviceWorker.ready;
+
+            // VAPID Public Key vom Server holen
+            var resp = await fetch("{{ url_for('settings.vapid_public_key') }}");
+            var data = await resp.json();
+
+            if (!data.public_key) {
+                alert("Push-Benachrichtigungen sind serverseitig nicht konfiguriert (VAPID-Key fehlt).");
+                showState("inactive");
+                return;
+            }
+
+            var applicationServerKey = urlBase64ToUint8Array(data.public_key);
+
+            var subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: applicationServerKey,
+            });
+
+            // Subscription ans Backend senden
+            var subJson = subscription.toJSON();
+            var platform = "desktop";
+            if (/Android/i.test(navigator.userAgent)) {
+                platform = "android";
+            } else if (isIos()) {
+                platform = "ios";
+            }
+
+            await fetch("{{ url_for('settings.push_subscribe') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    endpoint: subJson.endpoint,
+                    keys: subJson.keys,
+                    platform: platform,
+                }),
+            });
+
+            showState("active");
+        } catch (err) {
+            console.error("Push-Aktivierung fehlgeschlagen:", err);
+            if (Notification.permission === "denied") {
+                showState("denied");
+            } else {
+                alert("Push-Aktivierung fehlgeschlagen: " + err.message);
+                showState("inactive");
+            }
+        }
+    };
+
+    window.disablePush = async function () {
+        btnDisable.disabled = true;
+
+        try {
+            var registration = await navigator.serviceWorker.ready;
+            var subscription = await registration.pushManager.getSubscription();
+
+            if (subscription) {
+                var endpoint = subscription.endpoint;
+                await subscription.unsubscribe();
+
+                await fetch("{{ url_for('settings.push_unsubscribe') }}", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ endpoint: endpoint }),
+                });
+            }
+
+            showState("inactive");
+        } catch (err) {
+            console.error("Push-Deaktivierung fehlgeschlagen:", err);
+            alert("Fehler beim Deaktivieren: " + err.message);
+            showState("active");
+        }
+    };
+
+    init();
+})();
+</script>
 {% endblock %}

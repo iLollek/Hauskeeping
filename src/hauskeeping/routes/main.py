@@ -1,11 +1,19 @@
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, send_from_directory
 from flask_login import current_user, login_required
 
 from ..models.task import Task
 
 main_bp = Blueprint("main", __name__)
+
+
+@main_bp.route("/sw.js")
+def service_worker():
+    """Service Worker vom Root-Pfad ausliefern (Scope muss / sein)."""
+    return send_from_directory(
+        main_bp.root_path + "/../static", "sw.js", mimetype="application/javascript"
+    )
 
 
 @main_bp.route("/")

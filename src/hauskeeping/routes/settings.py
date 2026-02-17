@@ -1,7 +1,8 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from ..extensions import bcrypt, db
+from ..models.push_subscription import PushSubscription
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -74,3 +75,78 @@ def update_notifications():
     db.session.commit()
     flash("Benachrichtigungseinstellungen wurden gespeichert.", "success")
     return redirect(url_for("settings.index"))
+
+
+@settings_bp.route("/push/vapid-public-key")
+@login_required
+def vapid_public_key():
+    """VAPID Public Key fuer die Browser-seitige Push-Registrierung."""
+    key = current_app.config.get("VAPID_PUBLIC_KEY", "")
+    return jsonify({"public_key": key})
+
+
+@settings_bp.route("/push/subscribe", methods=["POST"])
+@login_required
+def push_subscribe():
+    """Browser-Push-Subscription registrieren."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Keine Daten erhalten."}), 400
+
+    endpoint = data.get("endpoint")
+    p256dh = data.get("keys", {}).get("p256dh")
+    auth = data.get("keys", {}).get("auth")
+    platform = data.get("platform", "unknown")
+
+    if not endpoint or not p256dh or not auth:
+        return jsonify({"error": "Unvollstaendige Subscription-Daten."}), 400
+
+    # Bestehende Subscription mit gleichem Endpoint aktualisieren oder neu anlegen
+    existing = PushSubscription.query.filter_by(
+        user_id=current_user.id, endpoint=endpoint
+    ).first()
+
+    if existing:
+        existing.p256dh = p256dh
+        existing.auth = auth
+        existing.platform = platform
+    else:
+        sub = PushSubscription(
+            user_id=current_user.id,
+            endpoint=endpoint,
+            p256dh=p256dh,
+            auth=auth,
+            platform=platform,
+        )
+        db.session.add(sub)
+
+    # Push automatisch aktivieren wenn erste Subscription registriert wird
+    current_user.push_notifications_enabled = True
+    db.session.commit()
+
+    return jsonify({"success": True})
+
+
+@settings_bp.route("/push/unsubscribe", methods=["POST"])
+@login_required
+def push_unsubscribe():
+    """Browser-Push-Subscription entfernen."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Keine Daten erhalten."}), 400
+
+    endpoint = data.get("endpoint")
+    if endpoint:
+        sub = PushSubscription.query.filter_by(
+            user_id=current_user.id, endpoint=endpoint
+        ).first()
+        if sub:
+            db.session.delete(sub)
+
+    # Wenn keine Subscriptions mehr vorhanden, Push deaktivieren
+    remaining = PushSubscription.query.filter_by(user_id=current_user.id).count()
+    if remaining == 0:
+        current_user.push_notifications_enabled = False
+
+    db.session.commit()
+    return jsonify({"success": True})

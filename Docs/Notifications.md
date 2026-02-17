@@ -1,139 +1,201 @@
-# Dokumentation des Notification Services in Hauskeeping
+# Notification Service – Hauskeeping
 
-Push-Notifications sind wichtig. Damit können User über Tasks erinnert werden. Es wurde schon über eine Kalender-Integration nachgedacht, jedoch sprengt das den Designrahmen von Hauskeeping. Außerdem hätte der User dann einmal den Handy-Kalender und einmal den Kalender in Hauskeeping.
+Hauskeeping setzt auf drei aufeinander aufbauende Notification-Kanäle, die User über fällige Aufgaben und Haushaltszusammenfassungen informieren. Alle Notifications sind optional – jede Funktion kann vom User jederzeit in den Einstellungen aktiviert oder deaktiviert werden.
 
-## Welche Notifications gibt es?
+**Die drei Kanäle:**
+- E-Mail – wöchentliche Zusammenfassung
+- Web Push – Echtzeit-Benachrichtigungen für iOS-User mit PWA
+- Android Push – Echtzeit-Benachrichtigungen direkt im Chrome/Firefox-Browser
 
-### 1. E-Mail Notification
-Wir senden dem User eine E-Mail
-
-**Vorteile:**
-- ✅ Funktioniert auf allen Plattformen (iOS, Android, Desktop)
-- ✅ Keine App-Installation oder Homescreen-Hinzufügung nötig
-- ✅ Sehr einfache Implementierung (Flask-Mail, SMTP)
-- ✅ Keine Browser-Einschränkungen
-- ✅ User können E-Mails archivieren/durchsuchen
-- ✅ Hohe Zustellrate (99%+)
-
-**Nachteile:**
-- ❌ Nicht so "sofort" wie Push (User checkt E-Mails unregelmäßig)
-- ❌ Kann im Spam landen
-- ❌ Weniger auffällig als System-Benachrichtigung
-- ❌ User muss E-Mail-App öffnen
-
-**Wann sinnvoll:** Tägliche Zusammenfassungen, wichtige Updates, Erinnerungen die nicht zeitkritisch sind
+> **Hinweis:** Alle drei Notification-Typen sind standardmäßig deaktiviert. Der User aktiviert sie explizit in den Einstellungen und kann sie jederzeit wieder abschalten.
 
 ---
 
-### 2. Web Push Notification (Progressive Web App)
-Web-App wird zum Homescreen hinzugefügt, Push via Web Push API
+## 1. E-Mail Notification – Wöchentliche Zusammenfassung
 
-**Vorteile:**
-- ✅ Kein nativer App-Store nötig
-- ✅ Kein Mac/Xcode für iOS nötig
-- ✅ Eine Code-Base für alle Plattformen
-- ✅ System-Benachrichtigungen wie native Apps
-- ✅ Funktioniert auch wenn Browser geschlossen ist
-- ✅ Kostenlos (kein Apple Developer Account nötig)
-- ✅ Standard-Technologie (W3C)
+Die E-Mail-Notification ist der einfachste und verlässlichste Kanal. Sie eignet sich für nicht zeitkritische Zusammenfassungen, die dem User einen Überblick über offene, erledigte und bald fällige Aufgaben geben.
 
-**Nachteile:**
-- ❌ **iOS: Nur wenn App zum Homescreen hinzugefügt wurde** (großer Friction)
-- ❌ iOS: Erst ab Version 16.4 (März 2023)
-- ❌ iOS: Nur Safari, nicht Chrome/Firefox
-- ❌ User muss aktiv "Add to Homescreen" machen
-- ❌ Komplexere Implementierung (Service Worker, VAPID Keys, Subscriptions)
-- ❌ Keine garantierte Zustellung bei schlechter Netzverbindung
+### Inhalt der wöchentlichen E-Mail
 
-**Wann sinnvoll:** Wenn du bereits eine PWA hast, Desktop-User, Android-Heavy User-Base
+Die E-Mail wird einmal pro Woche – standardmäßig montags früh – versandt. Sie enthält:
 
----
+- Offene Aufgaben der laufenden Woche
+- Aufgaben, die in der Vorwoche fällig waren und noch nicht erledigt wurden (überfällig)
+- Vorschau auf die nächste Woche
+- Kurze Statistik: erledigte Aufgaben der Vorwoche
 
-### 3. Native Mobile Push Notification (via Firebase Cloud Messaging)
-Native Apps für iOS/Android mit FCM/APNs
+*Beispiel-Betreffzeile: „Deine Hauskeeping-Woche – 3 Aufgaben stehen an"*
 
-**Vorteile:**
-- ✅ Beste User Experience auf Mobile
-- ✅ Höchste Zustellrate und Zuverlässigkeit
-- ✅ Funktioniert sofort nach Installation
-- ✅ Volle Kontrolle über Design/Sound/Badges
-- ✅ iOS + Android mit einer Lösung (FCM)
-- ✅ Rich Notifications (Bilder, Actions, etc.)
-- ✅ Funktioniert auch bei App-Kill
+### Sendezeitpunkt & Frequenz
 
-**Nachteile:**
-- ❌ **Braucht native Apps** (iOS + Android separat entwickeln)
-- ❌ iOS: Braucht Mac + Xcode + Apple Developer Account (99€/Jahr)
-- ❌ Mehr Entwicklungsaufwand (2 Apps pflegen)
-- ❌ App Store Review-Prozess
-- ❌ User muss App installieren (Download-Hürde)
+| Einstellung | Standardwert |
+|---|---|
+| Versandzeitpunkt | Montag, 07:00 Uhr (Zeitzone des Users) |
+| Frequenz | Wöchentlich |
+| Aktiviert by Default | Nein – User muss aktiv aktivieren |
+| Abbestellbar | Ja – in den Einstellungen und per Link in der Mail |
 
-**Wann sinnvoll:** Wenn du ein professionelles Produkt baust, Mobile-First, Budget für Entwicklung vorhanden
+### Technische Implementierung
 
----
+**Stack:**
+- Flask-Mail mit SMTP. Die SMTP-Daten sind in der .env Einstellbar.
+- APScheduler oder Celery Beat für den wöchentlichen Cron-Job
+- Jinja2 HTML-Templates für das E-Mail-Layout
 
-### 4. Discord DM Notification
-Wir senden dem User eine Notification über eine Discord-DM
+**Datenbankmodell** – neue Spalte in der User-Tabelle:
 
-**Vorteile:**
-- ✅ Sehr einfache Integration (Discord Bot API)
-- ✅ User, die Discord nutzen, sehen es sofort
-- ✅ Funktioniert auf allen Plattformen (wo Discord läuft)
-- ✅ Kann mit Discord-Community kombiniert werden
-- ✅ Rich Formatting (Embeds, Buttons) möglich
-
-**Nachteile:**
-- ❌ **User muss Discord haben und nutzen**
-- ❌ Nicht jeder hat/will Discord
-- ❌ User muss Hauskeeping-Bot autorisieren
-- ❌ Abhängigkeit von Discord (Drittanbieter)
-- ❌ Discord könnte API ändern/einschränken
-- ❌ Wirkt unprofessionell für manche User
-
-**Wann sinnvoll:** Tech-affine Zielgruppe, Gaming-/Developer-Community, als **zusätzliche** Option
-
----
-
-## Warum dann der zweite Weg mit Mobile?
-
-**Die Realität für Hauskeeping:**
-
-Für eine Flask-basierte Haushalts-App würde ich empfehlen:
-
-1. **Start mit E-Mail** (Pflicht)
-   - Jeder hat E-Mail, funktioniert überall
-   - Schnell implementiert
-
-2. **+ Web Push als "Nice-to-have"** (Optional)
-   - Für Power-User die die PWA installieren
-   - Gut für Desktop-User
-   - Relativ wenig Aufwand
-
-3. **Discord DM als Zusatz-Feature** (Optional)
-   - Nur wenn deine Zielgruppe techaffin ist
-   - Als Opt-in Feature
-
-4. **Native Mobile Apps nur wenn...**
-   - Du Budget/Zeit hast
-   - Du Mobile-First bist
-   - Du ein professionelles Produkt willst
-   - Du zahlende Kunden hast
-
-**Pragmatische Empfehlung für Hauskeeping:**
-```
-Phase 1: E-Mail Notifications (MUST)
-Phase 2: Web Push für PWA-User (SHOULD)
-Phase 3: Discord als Fun-Feature (COULD)
-Phase 4: Native Apps (WON'T - zu viel Aufwand für Flask-App)
+```python
+email_notifications_enabled = db.Column(db.Boolean, default=False)
 ```
 
-## Entscheidungsmatrix
+**Ablauf:**
 
-| Kriterium | E-Mail | Web Push | Native Mobile | Discord |
-|-----------|--------|----------|---------------|---------|
-| iOS Support | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| Android Support | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| Implementierungsaufwand | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐ | ⭐⭐⭐⭐ |
-| Sofortige Zustellung | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| User Adoption | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
-| Kosten | Kostenlos | Kostenlos | 99€/Jahr | Kostenlos |
+1. Cron-Job läuft wöchentlich montags um 07:00 Uhr
+2. Alle User mit `email_notifications_enabled = True` werden geladen
+3. Für jeden User werden offene und überfällige Tasks aus der DB abgefragt
+4. Jinja2-Template wird mit Task-Daten gerendert
+5. E-Mail wird über Flask-Mail versandt
+
+---
+
+## 2. Web Push Notification – PWA & iOS
+
+Web Push ermöglicht echte System-Benachrichtigungen für User, die Hauskeeping als Progressive Web App (PWA) auf dem Homescreen installiert haben. Dieser Kanal ist insbesondere für iOS-User relevant, da Safari seit iOS 16.4 Web Push in installierten PWAs unterstützt.
+
+### Voraussetzungen für den User
+
+- iOS 16.4 oder neuer
+- Safari als Browser
+- Hauskeeping muss zum Homescreen hinzugefügt worden sein („Add to Home Screen")
+- Der User muss die Benachrichtigungserlaubnis im Browser-Dialog bestätigen
+
+> **Hinweis iOS:** Die Homescreen-Installation ist auf iOS eine harte technische Anforderung von Apple. Ohne diesen Schritt ist Web Push auf iOS nicht möglich. Hauskeeping sollte den User in der Onboarding-Phase klar darüber informieren.
+
+### Wann werden Notifications gesendet?
+
+Im Gegensatz zur wöchentlichen E-Mail sind Web Push Notifications ereignisgetrieben (Beispiele, nicht vollständige Liste):
+
+- Eine Aufgabe wird am Fälligkeitstag um 08:00 Uhr gemeldet
+- Überfällige Aufgaben erhalten eine tägliche Erinnerung (optional, vom User einstellbar)
+
+
+### Technische Implementierung
+
+Hauskeeping bleibt eine Flask-Web-App. Web Push wird über den W3C Web Push Standard mit VAPID-Authentifizierung implementiert. Kein externer Dienst ist für diesen Kanal erforderlich.
+
+**Ablauf:**
+
+1. User öffnet Hauskeeping in Safari (nach Homescreen-Installation)
+2. Browser zeigt Benachrichtigungs-Dialog – User erteilt Erlaubnis
+3. Browser generiert PushSubscription-Objekt (Endpoint + Keys)
+4. Subscription wird ans Flask-Backend übermittelt und in der DB gespeichert
+5. Bei einem Task-Event sendet Flask eine Push-Nachricht via `pywebpush`
+6. Service Worker im Hintergrund empfängt die Nachricht und zeigt die Notification an
+
+**VAPID-Keys** werden einmalig generiert und als Umgebungsvariablen gespeichert:
+
+```
+VAPID_PRIVATE_KEY, VAPID_PUBLIC_KEY, VAPID_CLAIM_EMAIL → in .env / config.py
+```
+
+**Datenbankmodell – PushSubscription:**
+
+| Feld | Typ | Beschreibung |
+|---|---|---|
+| id | Integer PK | |
+| user_id | FK → User | Zugehöriger User |
+| endpoint | Text | Browser-seitige Push-URL |
+| p256dh | Text | Öffentlicher Verschlüsselungskey |
+| auth | Text | Auth-Secret des Browsers |
+| platform | String | z. B. `ios`, `android`, `desktop` |
+| created_at | DateTime | Erstellungszeitpunkt |
+
+**Abgelaufene Subscriptions:** Wenn der Push-Dienst einen HTTP `410 Gone` zurückgibt, ist die Subscription abgelaufen. Hauskeeping löscht sie automatisch aus der Datenbank.
+
+### iOS-Einschränkungen im Überblick
+
+| Einschränkung | Details |
+|---|---|
+| Mindest-iOS-Version | iOS 16.4 (März 2023) |
+| Nur Safari | Chrome und Firefox auf iOS unterstützen kein Web Push |
+| Homescreen-Pflicht | PWA muss installiert sein – kein Browser-Push ohne Installation |
+| Hintergrundprozesse | Apple kann Notifications auf älteren Geräten verzögern |
+
+---
+
+## 3. Android Push Notification – Web Push ohne native App
+
+Für Android-User gibt es einen pragmatischen Mittelweg, der echte System-Benachrichtigungen ermöglicht, ohne eine vollständige native App entwickeln zu müssen. Android-Browser wie Chrome und Firefox unterstützen den Web Push Standard vollständig – auch ohne Homescreen-Installation.
+
+### Voraussetzungen für den User
+
+- Android-Smartphone mit Chrome, Firefox oder Samsung Internet
+- Einmalige Bestätigung des Benachrichtigungs-Dialogs im Browser
+- Keine PWA-Installation notwendig
+
+> **Vorteil gegenüber iOS:** Auf Android entfällt die Homescreen-Pflicht vollständig. Der User muss nur einmal die Browser-Erlaubnis erteilen – danach funktioniert die Notification auch bei geschlossenem Tab oder minimiertem Browser.
+
+### Browser-Kompatibilität
+
+| Browser | Support | Anmerkung |
+|---|---|---|
+| Chrome (Android) | ✅ Vollständig | Beste Wahl, kein Homescreen nötig |
+| Firefox (Android) | ✅ Vollständig | Funktioniert zuverlässig |
+| Samsung Internet | ✅ Vollständig | Weit verbreitet auf Samsung-Geräten |
+| Brave (Android) | ⚠️ Eingeschränkt | Abhängig von Datenschutz-Einstellungen des Users |
+
+*Hinweis: Manche Android-Geräte (insbesondere Xiaomi, Huawei, OnePlus) verwalten Hintergrundprozesse aggressiv. Notifications können dadurch verzögert werden. Der User muss ggf. in den Akku-Einstellungen eine Ausnahme für den Browser einrichten – darauf hat Hauskeeping keinen Einfluss.*
+
+### Geteilte Codebasis mit Web Push
+
+Android Push verwendet denselben technischen Stack wie Web Push (iOS). Service Worker, VAPID-Keys und das PushSubscription-Modell sind identisch – es ist keine separate Implementierung notwendig.
+
+| Komponente | Web Push (iOS) | Android Push |
+|---|---|---|
+| Service Worker (`sw.js`) | ✅ Identisch | ✅ Identisch |
+| VAPID-Keys | ✅ Identisch | ✅ Identisch |
+| PushSubscription-Modell | ✅ Identisch | ✅ Identisch |
+| `send_push_notification()` | ✅ Identisch | ✅ Identisch |
+| Homescreen-Installation | Erforderlich | Nicht erforderlich |
+
+---
+
+## 4. Einstellungen & Optionalität
+
+Kein User erhält ungefragt Notifications. Alle drei Kanäle sind opt-in und können jederzeit in den Einstellungen verwaltet werden.
+
+### User-Einstellungsseite
+
+| Notification-Typ | Standard | User-Kontrolle |
+|---|---|---|
+| E-Mail Zusammenfassung | Aus | Toggle + Wochentag-Auswahl |
+| Web Push (iOS PWA) | Aus | Toggle + Browser-Erlaubnis-Dialog |
+| Android Push | Aus | Toggle + Browser-Erlaubnis-Dialog |
+
+### Abmeldung & Datenlöschung
+
+- E-Mail: Abmeldung per Link in der E-Mail oder Toggle in den Einstellungen
+- Web Push / Android: Deaktivieren des Toggles löscht die gespeicherte PushSubscription aus der Datenbank
+- Wenn ein User seinen Account löscht, werden alle Subscriptions und Präferenzen entfernt
+
+### Datenbankmodell – User
+
+| Feld | Typ | Bedeutung |
+|---|---|---|
+| email_notifications_enabled | Boolean | Wöchentliche E-Mail aktiv |
+| email_notification_day | Integer (0–6) | Wochentag für den Versand (0 = Mo) |
+| push_notifications_enabled | Boolean | Web Push / Android Push aktiv |
+
+Push-Subscriptions werden separat in der `PushSubscription`-Tabelle gespeichert, da ein User mehrere Geräte registriert haben kann.
+
+---
+
+## 5. Implementierungs-Phasen
+
+| Phase | Kanal | Aufwand | Priorität |
+|---|---|---|---|
+| 1 | E-Mail Zusammenfassung | Gering – Flask-Mail + Cron | MUST |
+| 2 | Web Push (iOS PWA) | Mittel – Service Worker + VAPID | SHOULD |
+| 3 | Android Push | Sehr gering – gleicher Stack wie Phase 2 | SHOULD |
+
+Native Mobile Apps (iOS/Android) sind für Hauskeeping als Flask-App nicht geplant.

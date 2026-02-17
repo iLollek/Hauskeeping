@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Statistik – Hauskeeping{% endblock %}
+
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-bar-chart-line"></i> Statistik</h3>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="fs-2 fw-bold text-primary">{{ total_tasks }}</div>
+                <div class="text-muted small">Aufgaben gesamt</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="fs-2 fw-bold text-success">{{ total_done }}</div>
+                <div class="text-muted small">Erledigt</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="fs-2 fw-bold text-warning">{{ total_open }}</div>
+                <div class="text-muted small">Offen</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="fs-2 fw-bold text-danger">{{ total_overdue }}</div>
+                <div class="text-muted small">Ueberfaellig</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="text-muted small mb-1">Diese Woche</div>
+                <div class="fs-4 fw-bold">{{ tasks_done_this_week }} / {{ tasks_this_week }}</div>
+                <div class="text-muted small">Aufgaben erledigt</div>
+                {% if tasks_this_week > 0 %}
+                <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar bg-success" style="width: {{ (tasks_done_this_week / tasks_this_week * 100)|round }}%"></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="text-muted small mb-1">Einkaufsliste</div>
+                <div class="fs-4 fw-bold">{{ total_shopping }}</div>
+                <div class="text-muted small">Artikel insgesamt hinzugefuegt</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="text-muted small mb-1">Beliebteste Kategorie</div>
+                <div class="fs-4 fw-bold">{{ top_category_name or '–' }}</div>
+                <div class="text-muted small">Meiste Aufgaben</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if tasks_by_weekday %}
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <strong><i class="bi bi-calendar3"></i> Aufgaben nach Wochentag</strong>
+    </div>
+    <div class="card-body">
+        {% set max_day = tasks_by_weekday|map(attribute='count')|max %}
+        {% for day in tasks_by_weekday %}
+        <div class="d-flex align-items-center mb-2">
+            <span class="text-muted" style="width: 30px;">{{ day.day }}</span>
+            <div class="flex-grow-1 mx-2">
+                <div class="progress" style="height: 20px;">
+                    <div class="progress-bar {% if loop.index <= 5 %}bg-primary{% else %}bg-secondary{% endif %}"
+                         style="width: {% if max_day > 0 %}{{ (day.count / max_day * 100)|round }}{% else %}0{% endif %}%">
+                        {% if day.count > 0 %}{{ day.count }}{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <strong><i class="bi bi-people"></i> Rangliste</strong>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Benutzer</th>
+                        <th class="text-center" title="Erstellte Aufgaben"><i class="bi bi-plus-circle"></i> Erstellt</th>
+                        <th class="text-center" title="Erledigte Aufgaben"><i class="bi bi-check-circle"></i> Erledigt</th>
+                        <th class="text-center" title="Offene Aufgaben"><i class="bi bi-circle"></i> Offen</th>
+                        <th class="text-center" title="Ueberfaellige Aufgaben"><i class="bi bi-exclamation-circle"></i> Ueberfaellig</th>
+                        <th class="text-center" title="Einkaufsartikel hinzugefuegt"><i class="bi bi-cart3"></i> Einkauf</th>
+                        <th class="text-center">Quote</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in user_stats|sort(attribute='tasks_completed', reverse=True) %}
+                    <tr>
+                        <td>
+                            {% if loop.index == 1 and stat.tasks_completed > 0 %}
+                            <i class="bi bi-trophy-fill text-warning"></i>
+                            {% else %}
+                            {{ loop.index }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ stat.user.username }}</strong>
+                            {% if stat.user.is_hausmeister %}
+                            <span class="badge bg-warning text-dark" style="font-size: 0.65em;">HM</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ stat.tasks_created }}</td>
+                        <td class="text-center">
+                            <span class="fw-bold text-success">{{ stat.tasks_completed }}</span>
+                        </td>
+                        <td class="text-center">{{ stat.tasks_open }}</td>
+                        <td class="text-center">
+                            {% if stat.tasks_overdue > 0 %}
+                            <span class="text-danger fw-bold">{{ stat.tasks_overdue }}</span>
+                            {% else %}
+                            <span class="text-muted">0</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ stat.shopping_added }}</td>
+                        <td class="text-center">
+                            {% if stat.completion_rate >= 80 %}
+                            <span class="badge bg-success">{{ stat.completion_rate }}%</span>
+                            {% elif stat.completion_rate >= 50 %}
+                            <span class="badge bg-warning text-dark">{{ stat.completion_rate }}%</span>
+                            {% elif stat.completion_rate > 0 %}
+                            <span class="badge bg-danger">{{ stat.completion_rate }}%</span>
+                            {% else %}
+                            <span class="badge bg-secondary">–</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -16,9 +16,6 @@ venv/
 *.db
 instance/
 
-# Migrations
-migrations/
-
 # IDE
 .vscode/
 .idea/

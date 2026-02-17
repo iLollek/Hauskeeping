@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Invite-Codes – Hauskeeping{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Invite-Codes</h3>
+</div>
+
+<!-- Neuen Code erstellen -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.create_invite_code') }}" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label for="expires_days" class="form-label">Gueltigkeit (Tage)</label>
+                <input type="number" class="form-control" id="expires_days" name="expires_days"
+                       value="7" min="1" max="90">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Neuen Code erstellen
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Code-Liste -->
+{% if codes %}
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Erstellt von</th>
+                <th>Erstellt am</th>
+                <th>Laeuft ab</th>
+                <th>Status</th>
+                <th>Eingeloest von</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for code in codes %}
+            <tr>
+                <td>
+                    <code class="user-select-all">{{ code.code }}</code>
+                </td>
+                <td>{{ code.creator.username }}</td>
+                <td>{{ code.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td>{{ code.expires_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td>
+                    {% if code.used_by %}
+                    <span class="badge bg-secondary">Eingeloest</span>
+                    {% elif code.is_valid %}
+                    <span class="badge bg-success">Aktiv</span>
+                    {% else %}
+                    <span class="badge bg-danger">Abgelaufen</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if code.redeemer %}
+                    {{ code.redeemer.username }}
+                    {% else %}
+                    <span class="text-muted">–</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+    <i class="bi bi-ticket-perforated fs-1"></i>
+    <p class="mt-2">Noch keine Invite-Codes erstellt.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Registrieren – Hauskeeping{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">Registrieren</h2>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="invite_code" class="form-label">Invite-Code</label>
+                        <input type="text" class="form-control" id="invite_code" name="invite_code"
+                               required placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                        <div class="form-text">Du benoetigst einen Invite-Code von einem Hausmeister.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Benutzername</label>
+                        <input type="text" class="form-control" id="username" name="username"
+                               required minlength="3">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Passwort</label>
+                        <input type="password" class="form-control" id="password" name="password"
+                               required minlength="6">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password_confirm" class="form-label">Passwort wiederholen</label>
+                        <input type="password" class="form-control" id="password_confirm"
+                               name="password_confirm" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Registrieren</button>
+                </form>
+                <hr>
+                <p class="text-center mb-0">
+                    <a href="{{ url_for('auth.login') }}">Bereits registriert? Anmelden</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

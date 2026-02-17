@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Einkaufsliste – Hauskeeping{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Einkaufsliste</h3>
+    {% set checked_count = items|selectattr('is_checked')|list|length %}
+    {% if checked_count > 0 %}
+    <form method="POST" action="{{ url_for('shopping.clear_checked') }}"
+          onsubmit="return confirm('Alle abgehakten Artikel entfernen?')">
+        <button type="submit" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-trash"></i> {{ checked_count }} abgehakte entfernen
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+<!-- Artikel hinzufuegen -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('shopping.add_item') }}" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label for="name" class="form-label">Artikel</label>
+                <input type="text" class="form-control" id="name" name="name"
+                       placeholder="z.B. Milch, Brot, ..." required>
+            </div>
+            <div class="col-md-4">
+                <label for="category" class="form-label">Kategorie</label>
+                <select class="form-select" id="category" name="category">
+                    {% for value, label in categories %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-plus"></i> Hinzufuegen
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Einkaufsliste -->
+{% if items %}
+<div class="list-group">
+    {% for item in items %}
+    <div class="list-group-item d-flex justify-content-between align-items-center
+                {% if item.is_checked %}list-group-item-light{% endif %}">
+        <div class="d-flex align-items-center gap-3">
+            <form method="POST" action="{{ url_for('shopping.toggle_item', item_id=item.id) }}">
+                <button type="submit" class="btn btn-sm btn-link p-0">
+                    <i class="bi {% if item.is_checked %}bi-check-square-fill text-success{% else %}bi-square text-secondary{% endif %} fs-5"></i>
+                </button>
+            </form>
+            <div>
+                <span class="{% if item.is_checked %}text-decoration-line-through text-muted{% endif %}">
+                    {{ item.name }}
+                </span>
+                {% if item.category %}
+                <span class="badge bg-secondary ms-2">{{ item.category|capitalize }}</span>
+                {% endif %}
+                <br>
+                <small class="text-muted">
+                    von {{ item.added_by_user.username }} &middot; {{ item.created_at.strftime('%d.%m.%Y') }}
+                </small>
+            </div>
+        </div>
+        <form method="POST" action="{{ url_for('shopping.delete_item', item_id=item.id) }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger" title="Entfernen">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+    <i class="bi bi-cart-x fs-1"></i>
+    <p class="mt-2">Die Einkaufsliste ist leer.</p>
+</div>
+{% endif %}
+{% endblock %}

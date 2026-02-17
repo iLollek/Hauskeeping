@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Benutzer – Hauskeeping{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Benutzer</h3>
+
+{% if users %}
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Benutzername</th>
+                <th>Rolle</th>
+                <th>Registriert am</th>
+                <th>Eingeladen von</th>
+                <th style="width: 180px;">Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>
+                    {{ user.username }}
+                    {% if user.id == current_user.id %}
+                    <span class="badge bg-info">Du</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.is_hausmeister %}
+                    <span class="badge bg-warning text-dark">Hausmeister</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Mitglied</span>
+                    {% endif %}
+                </td>
+                <td>{{ user.created_at.strftime('%d.%m.%Y') }}</td>
+                <td>
+                    {% if user.inviter %}
+                    {{ user.inviter.username }}
+                    {% else %}
+                    <span class="text-muted">–</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.id != current_user.id %}
+                    {% if not user.is_hausmeister %}
+                    <form method="POST" action="{{ url_for('admin.promote_user', user_id=user.id) }}"
+                          class="d-inline"
+                          onsubmit="return confirm('{{ user.username }} zum Hausmeister ernennen?')">
+                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Zum Hausmeister ernennen">
+                            <i class="bi bi-arrow-up-circle"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                    <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}"
+                          class="d-inline"
+                          onsubmit="return confirm('{{ user.username }} wirklich entfernen?')">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Entfernen">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+    <p>Keine Benutzer gefunden.</p>
+</div>
+{% endif %}
+{% endblock %}

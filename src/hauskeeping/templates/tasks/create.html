@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Neue Aufgabe – Hauskeeping{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h3 class="mb-4">Neue Aufgabe</h3>
+        <form method="POST">
+            <div class="mb-3">
+                <label for="title" class="form-label">Titel</label>
+                <input type="text" class="form-control" id="title" name="title" required>
+            </div>
+            <div class="mb-3">
+                <label for="description" class="form-label">Beschreibung (optional)</label>
+                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="due_date" class="form-label">Faelligkeitsdatum</label>
+                    <input type="date" class="form-control" id="due_date" name="due_date" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="priority" class="form-label">Prioritaet</label>
+                    <select class="form-select" id="priority" name="priority">
+                        <option value="low">Niedrig</option>
+                        <option value="medium" selected>Mittel</option>
+                        <option value="high">Hoch</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="assigned_to" class="form-label">Zuweisen an (optional)</label>
+                    <select class="form-select" id="assigned_to" name="assigned_to">
+                        <option value="">– Niemand –</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="recurrence_rule" class="form-label">Wiederholung (optional)</label>
+                    <select class="form-select" id="recurrence_rule" name="recurrence_rule">
+                        <option value="">Keine</option>
+                        <option value="daily">Taeglich</option>
+                        <option value="weekly">Woechentlich</option>
+                        <option value="monthly">Monatlich</option>
+                    </select>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Erstellen
+                </button>
+                <a href="{{ url_for('tasks.task_list') }}" class="btn btn-outline-secondary">Abbrechen</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -35,6 +35,14 @@
             </button>
         </form>
         {% endif %}
+        {% if total_count > 0 %}
+        <form method="POST" action="{{ url_for('shopping.clear_all') }}"
+              onsubmit="return confirm('Gesamte Einkaufsliste zuruecksetzen? Alle {{ total_count }} Artikel werden entfernt.')">
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-arrow-counterclockwise"></i> Zuruecksetzen
+            </button>
+        </form>
+        {% endif %}
     </div>
 </div>
 

@@ -97,6 +97,17 @@ def clear_checked():
     return redirect(url_for("shopping.shopping_list"))
 
 
+@shopping_bp.route("/clear-all", methods=["POST"])
+@login_required
+def clear_all():
+    """Entfernt alle Artikel von der Einkaufsliste."""
+    ShoppingListItem.query.delete()
+    db.session.commit()
+
+    flash("Einkaufsliste zurueckgesetzt.", "success")
+    return redirect(url_for("shopping.shopping_list"))
+
+
 # --- Kategorie-Verwaltung ---
 
 

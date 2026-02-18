@@ -6,6 +6,8 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from ..extensions import db
+from ..models.shopping import ShoppingListItem
+from ..models.task import Task
 from ..models.user import InviteCode, User
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -103,6 +105,17 @@ def delete_user(user_id):
     if user.id == current_user.id:
         flash("Du kannst dich nicht selbst entfernen.", "warning")
         return redirect(url_for("admin.user_list"))
+
+    # Nullable FKs auf NULL setzen
+    Task.query.filter_by(assigned_to=user.id).update({"assigned_to": None})
+    Task.query.filter_by(completed_by=user.id).update({"completed_by": None})
+    InviteCode.query.filter_by(used_by=user.id).update({"used_by": None})
+    User.query.filter_by(invited_by=user.id).update({"invited_by": None})
+
+    # NOT NULL FKs: Eintraege dem loeschenden Admin zuweisen
+    Task.query.filter_by(created_by=user.id).update({"created_by": current_user.id})
+    ShoppingListItem.query.filter_by(added_by=user.id).update({"added_by": current_user.id})
+    InviteCode.query.filter_by(created_by=user.id).update({"created_by": current_user.id})
 
     db.session.delete(user)
     db.session.commit()

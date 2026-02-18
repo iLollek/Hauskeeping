@@ -56,6 +56,10 @@ class Task(db.Model):
     assigned_to = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     recurrence_rule = db.Column(db.String(50), nullable=True)
+    completed_by = db.Column(
+        db.Integer, db.ForeignKey("users.id"), nullable=True
+    )
+    completed_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(
         db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
     )

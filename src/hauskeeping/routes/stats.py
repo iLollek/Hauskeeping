@@ -25,7 +25,7 @@ def index():
     for user in users:
         tasks_created = Task.query.filter_by(created_by=user.id).count()
         tasks_completed = Task.query.filter_by(
-            assigned_to=user.id, is_done=True
+            completed_by=user.id
         ).count()
         tasks_assigned = Task.query.filter_by(assigned_to=user.id).count()
         tasks_open = Task.query.filter_by(

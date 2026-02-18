@@ -42,6 +42,9 @@ class User(UserMixin, db.Model):
     tasks_assigned = db.relationship(
         "Task", backref="assignee", foreign_keys="Task.assigned_to"
     )
+    tasks_completed = db.relationship(
+        "Task", backref="completer", foreign_keys="Task.completed_by"
+    )
     shopping_items = db.relationship("ShoppingListItem", backref="added_by_user")
     push_subscriptions = db.relationship(
         "PushSubscription", backref="user", cascade="all, delete-orphan"

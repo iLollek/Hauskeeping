@@ -40,6 +40,9 @@
                 <th>Faellig</th>
                 <th>Kategorie</th>
                 <th>Zugewiesen an</th>
+                {% if show != 'open' %}
+                <th>Erledigt von</th>
+                {% endif %}
                 <th style="width: 120px;">Aktionen</th>
             </tr>
         </thead>
@@ -84,6 +87,15 @@
                     <span class="text-muted">–</span>
                     {% endif %}
                 </td>
+                {% if show != 'open' %}
+                <td>
+                    {% if task.completer %}
+                    {{ task.completer.username }}
+                    {% else %}
+                    <span class="text-muted">–</span>
+                    {% endif %}
+                </td>
+                {% endif %}
                 <td>
                     <a href="{{ url_for('tasks.edit', task_id=task.id) }}"
                        class="btn btn-sm btn-outline-primary" title="Bearbeiten">

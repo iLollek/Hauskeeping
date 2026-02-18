@@ -160,6 +160,12 @@ def toggle(task_id):
     """
     task = db.get_or_404(Task, task_id)
     task.is_done = not task.is_done
+    if task.is_done:
+        task.completed_by = current_user.id
+        task.completed_at = datetime.now(timezone.utc)
+    else:
+        task.completed_by = None
+        task.completed_at = None
     db.session.commit()
 
     status = "erledigt" if task.is_done else "offen"

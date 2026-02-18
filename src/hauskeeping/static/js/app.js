@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
 // Service Worker registrieren (fuer Push Notifications)
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker
-    .register("/sw.js")
+    .register(window.SW_URL)
     .then(function (registration) {
       console.log("Service Worker registriert:", registration.scope);
     })

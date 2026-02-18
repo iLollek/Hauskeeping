@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, render_template, request, send_from_directory
+from flask import Blueprint, jsonify, render_template, request, send_from_directory, url_for
 from flask_login import current_user, login_required
 
 from ..models.task import Task
@@ -14,6 +14,33 @@ def service_worker():
     return send_from_directory(
         main_bp.root_path + "/../static", "sw.js", mimetype="application/javascript"
     )
+
+
+@main_bp.route("/manifest.json")
+def manifest():
+    """Dynamisches Web App Manifest mit korrekten Pfaden."""
+    return jsonify({
+        "name": "Hauskeeping",
+        "short_name": "Hauskeeping",
+        "description": "Haushalt gemeinsam organisieren",
+        "start_url": url_for("main.dashboard"),
+        "scope": url_for("main.dashboard"),
+        "display": "standalone",
+        "background_color": "#ffffff",
+        "theme_color": "#212529",
+        "icons": [
+            {
+                "src": url_for("static", filename="icons/icon-192.png"),
+                "sizes": "192x192",
+                "type": "image/png",
+            },
+            {
+                "src": url_for("static", filename="icons/icon-512.png"),
+                "sizes": "512x512",
+                "type": "image/png",
+            },
+        ],
+    })
 
 
 @main_bp.route("/")

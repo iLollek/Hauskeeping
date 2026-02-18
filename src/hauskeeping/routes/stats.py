@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, render_template
 from flask_login import login_required
-from sqlalchemy import func
+from sqlalchemy import extract, func
 
 from ..extensions import db
 from ..models.shopping import ShoppingListItem
@@ -25,7 +25,7 @@ def index():
     for user in users:
         tasks_created = Task.query.filter_by(created_by=user.id).count()
         tasks_completed = Task.query.filter_by(
-            assigned_to=user.id, is_done=True
+            completed_by=user.id
         ).count()
         tasks_assigned = Task.query.filter_by(assigned_to=user.id).count()
         tasks_open = Task.query.filter_by(
@@ -80,7 +80,7 @@ def index():
     tasks_by_weekday = []
     for i in range(7):
         count = Task.query.filter(
-            func.strftime("%w", Task.due_date) == str((i + 1) % 7)
+            extract("dow", Task.due_date) == (i + 1) % 7
         ).count()
         tasks_by_weekday.append({"day": day_names[i], "count": count})
 

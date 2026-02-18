@@ -33,7 +33,7 @@ def create_app():
 
     # Proxy-Konfiguration
     if app.config["USE_PROXY"]:
-        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
         app.config["APPLICATION_ROOT"] = app.config["PROXY_PREFIX"]
 
     # Models importieren (fuer Flask-Migrate)

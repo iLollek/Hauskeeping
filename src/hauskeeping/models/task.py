@@ -57,6 +57,9 @@ class Task(db.Model):
     assigned_to = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     recurrence_rule = db.Column(db.String(50), nullable=True)
+    parent_task_id = db.Column(
+        db.Integer, db.ForeignKey("tasks.id"), nullable=True
+    )
     completed_by = db.Column(
         db.Integer, db.ForeignKey("users.id"), nullable=True
     )

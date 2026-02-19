@@ -1,3 +1,4 @@
+from .app_state import AppState
 from .push_subscription import PushSubscription
 from .shopping import ShoppingCategory, ShoppingListItem
 from .task import Task, TaskCategory
@@ -11,4 +12,5 @@ __all__ = [
     "ShoppingCategory",
     "ShoppingListItem",
     "PushSubscription",
+    "AppState",
 ]

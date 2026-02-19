@@ -92,9 +92,20 @@ def _run_recurrence_spawn(app):
     ein verpasster Montag beim naechsten App-Start aufgeholt wird.
     """
     with app.app_context():
+        from sqlalchemy import inspect as sa_inspect
+
         from .extensions import db
         from .models.app_state import AppState
         from .models.task import Task
+
+        # Migrationen noch nicht vollstaendig? Tabellen koennen noch fehlen.
+        inspector = sa_inspect(db.engine)
+        if not inspector.has_table("app_state") or not inspector.has_table("tasks"):
+            logger.info(
+                "Recurrence-Spawn uebersprungen: Tabellen noch nicht vorhanden "
+                "(Migration ausstehend?)."
+            )
+            return
 
         today = date.today()
         monday = today - timedelta(days=today.weekday())

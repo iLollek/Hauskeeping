@@ -2,7 +2,9 @@
 
 Eine moderne Web-Anwendung zur Verwaltung von Haushaltsaufgaben für Wohngemeinschaften, Familien oder Einzelpersonen.
 
-> **Hinweis:** Dieses Projekt befindet sich in aktiver Entwicklung.
+---
+
+![Die Hauptkalenderansicht von Hauskeeping](Docs/pictures/calender_view.png)
 
 ---
 
@@ -11,7 +13,7 @@ Eine moderne Web-Anwendung zur Verwaltung von Haushaltsaufgaben für Wohngemeins
 - 📅 **Kalenderansicht als Hauptscreen** – Behalte alle Hausarbeiten im Überblick
 - 🔄 **Wiederkehrende Aufgaben** – Setze Aufgaben wie „Einkaufen jeden Donnerstag" automatisch
 - 🛒 **Interaktive Einkaufsliste** – Gemeinsam Artikel hinzufügen und abhaken
-- 📋 **Aufgabenverwaltung** – Mit Prioritäten und Deadlines
+- 📋 **Aufgabenverwaltung** – Mit Tracking und Deadlines
 - 👥 **Mehrbenutzer-Support** – Aufgaben auf Personen verteilen
 - ✅ **Fortschrittstracking** – Erledigungshistorie auf einen Blick
 - 🔔 **Benachrichtigungen** – E-Mail, Web Push (iOS PWA) und Android Push
@@ -55,7 +57,7 @@ Weitere Details: [Docs/architecture/Notifications.md](Docs/architecture/Notifica
 
 ---
 
-## Installation
+## Installation (Entwicklungsumgebung)
 
 ```bash
 # Repository klonen
@@ -86,13 +88,7 @@ python run.py
 
 Die App ist nun unter `http://localhost:5000` erreichbar.
 
-Weitere Informationen zur Konfiguration der Umgebungsvariablen (SMTP, VAPID-Keys, Datenbankverbindung): [Docs/architecture/Environment.md](Docs/architecture/Environment.md)
-
----
-
-## Deployment
-
-Vollständige Anleitung für Raspbian/Linux: [INSTALL.md](INSTALL.md)
+Erweiterte Deploymentguides für Produktivumgebungen können [hier](Docs/deployment/) eingesehen werden.
 
 ---
 

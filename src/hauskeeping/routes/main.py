@@ -88,11 +88,14 @@ def dashboard():
             }
         )
 
+    calendar_week = monday.isocalendar()[1]
+
     return render_template(
         "main/dashboard.html",
         days=days,
         week_offset=week_offset,
         monday=monday,
         sunday=sunday,
+        calendar_week=calendar_week,
         current_user=current_user,
     )

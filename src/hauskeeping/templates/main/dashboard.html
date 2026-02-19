@@ -10,6 +10,7 @@
     </a>
     <h3 class="mb-0">
         {{ monday.strftime('%d.%m.') }} &ndash; {{ sunday.strftime('%d.%m.%Y') }}
+        <small class="text-muted ms-1" style="font-size: 0.5em; font-weight: 400; letter-spacing: 0.04em; vertical-align: middle;">KW&nbsp;{{ calendar_week }}</small>
     </h3>
     <a href="{{ url_for('main.dashboard', week_offset=week_offset + 1) }}"
        class="btn btn-outline-secondary">

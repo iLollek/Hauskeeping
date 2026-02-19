@@ -2,11 +2,11 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, render_template
 from flask_login import login_required
-from sqlalchemy import extract, func
+from sqlalchemy import extract, func, or_
 
 from ..extensions import db
 from ..models.shopping import ShoppingListItem
-from ..models.task import Task
+from ..models.task import Task, TaskCategory
 from ..models.user import User
 
 stats_bp = Blueprint("stats", __name__, url_prefix="/stats")
@@ -20,21 +20,34 @@ def index():
     today = datetime.now(timezone.utc).date()
     monday = today - timedelta(days=today.weekday())
 
+    # IDs von Kategorien, die von der Statistik ausgeschlossen sind
+    excluded_cat_ids = [
+        c.id for c in TaskCategory.query.filter_by(exclude_from_stats=True).all()
+    ]
+
+    def _excl(q):
+        """Filtert Aufgaben aus ausgeschlossenen Kategorien heraus."""
+        if not excluded_cat_ids:
+            return q
+        return q.filter(
+            or_(Task.category_id.is_(None), Task.category_id.notin_(excluded_cat_ids))
+        )
+
     # --- Pro User Statistiken ---
     user_stats = []
     for user in users:
-        tasks_created = Task.query.filter_by(created_by=user.id).count()
-        tasks_completed = Task.query.filter_by(
-            completed_by=user.id
+        tasks_created = _excl(Task.query.filter_by(created_by=user.id)).count()
+        tasks_completed = _excl(Task.query.filter_by(completed_by=user.id)).count()
+        tasks_assigned = _excl(Task.query.filter_by(assigned_to=user.id)).count()
+        tasks_open = _excl(
+            Task.query.filter_by(assigned_to=user.id, is_done=False)
         ).count()
-        tasks_assigned = Task.query.filter_by(assigned_to=user.id).count()
-        tasks_open = Task.query.filter_by(
-            assigned_to=user.id, is_done=False
-        ).count()
-        tasks_overdue = Task.query.filter(
-            Task.assigned_to == user.id,
-            Task.is_done == False,  # noqa: E712
-            Task.due_date < today,
+        tasks_overdue = _excl(
+            Task.query.filter(
+                Task.assigned_to == user.id,
+                Task.is_done == False,  # noqa: E712
+                Task.due_date < today,
+            )
         ).count()
         shopping_added = ShoppingListItem.query.filter_by(added_by=user.id).count()
 
@@ -55,49 +68,58 @@ def index():
         )
 
     # --- Globale Statistiken ---
-    total_tasks = Task.query.count()
-    total_done = Task.query.filter_by(is_done=True).count()
-    total_open = Task.query.filter_by(is_done=False).count()
-    total_overdue = Task.query.filter(
-        Task.is_done == False,  # noqa: E712
-        Task.due_date < today,
+    total_tasks = _excl(Task.query).count()
+    total_done = _excl(Task.query.filter_by(is_done=True)).count()
+    total_open = _excl(Task.query.filter_by(is_done=False)).count()
+    total_overdue = _excl(
+        Task.query.filter(
+            Task.is_done == False,  # noqa: E712
+            Task.due_date < today,
+        )
     ).count()
     total_shopping = ShoppingListItem.query.count()
 
     # Aufgaben diese Woche
-    tasks_this_week = Task.query.filter(
-        Task.due_date >= monday,
-        Task.due_date <= monday + timedelta(days=6),
+    tasks_this_week = _excl(
+        Task.query.filter(
+            Task.due_date >= monday,
+            Task.due_date <= monday + timedelta(days=6),
+        )
     ).count()
-    tasks_done_this_week = Task.query.filter(
-        Task.due_date >= monday,
-        Task.due_date <= monday + timedelta(days=6),
-        Task.is_done == True,  # noqa: E712
+    tasks_done_this_week = _excl(
+        Task.query.filter(
+            Task.due_date >= monday,
+            Task.due_date <= monday + timedelta(days=6),
+            Task.is_done == True,  # noqa: E712
+        )
     ).count()
 
     # Aufgaben pro Wochentag (Verteilung)
     day_names = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
     tasks_by_weekday = []
     for i in range(7):
-        count = Task.query.filter(
-            extract("dow", Task.due_date) == (i + 1) % 7
+        count = _excl(
+            Task.query.filter(extract("dow", Task.due_date) == (i + 1) % 7)
         ).count()
         tasks_by_weekday.append({"day": day_names[i], "count": count})
 
-    # Top-Kategorie (meiste Aufgaben)
-    top_category = (
-        db.session.query(
-            Task.category_id, func.count(Task.id).label("cnt")
-        )
+    # Top-Kategorie (meiste Aufgaben, nur nicht ausgeschlossene)
+    top_cat_query = (
+        db.session.query(Task.category_id, func.count(Task.id).label("cnt"))
         .filter(Task.category_id.isnot(None))
+    )
+    if excluded_cat_ids:
+        top_cat_query = top_cat_query.filter(
+            Task.category_id.notin_(excluded_cat_ids)
+        )
+    top_category = (
+        top_cat_query
         .group_by(Task.category_id)
         .order_by(func.count(Task.id).desc())
         .first()
     )
     top_category_name = None
     if top_category:
-        from ..models.task import TaskCategory
-
         cat = db.session.get(TaskCategory, top_category[0])
         if cat:
             top_category_name = cat.name

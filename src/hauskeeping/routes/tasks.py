@@ -199,6 +199,7 @@ def add_category():
     """Erstellt eine neue Aufgabenkategorie."""
     name = request.form.get("name", "").strip()
     color = request.form.get("color", "#6c757d").strip()
+    exclude_from_stats = request.form.get("exclude_from_stats") == "on"
 
     if not name:
         flash("Kategoriename ist erforderlich.", "danger")
@@ -218,6 +219,7 @@ def add_category():
         slug=slug,
         color=color,
         position=max_pos + 1,
+        exclude_from_stats=exclude_from_stats,
     )
     db.session.add(category)
     db.session.commit()
@@ -234,6 +236,7 @@ def edit_category(category_id):
 
     name = request.form.get("name", "").strip()
     color = request.form.get("color", category.color).strip()
+    exclude_from_stats = request.form.get("exclude_from_stats") == "on"
 
     if not name:
         flash("Kategoriename ist erforderlich.", "danger")
@@ -251,6 +254,7 @@ def edit_category(category_id):
     category.name = name
     category.slug = new_slug
     category.color = color
+    category.exclude_from_stats = exclude_from_stats
     db.session.commit()
 
     flash(f'Kategorie "{name}" aktualisiert.', "success")

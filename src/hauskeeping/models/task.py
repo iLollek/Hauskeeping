@@ -18,6 +18,7 @@ class TaskCategory(db.Model):
     slug = db.Column(db.String(50), unique=True, nullable=False)
     color = db.Column(db.String(7), nullable=False, default="#6c757d")
     position = db.Column(db.Integer, nullable=False, default=0)
+    exclude_from_stats = db.Column(db.Boolean, nullable=False, default=False)
 
     @staticmethod
     def make_slug(name):

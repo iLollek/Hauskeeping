@@ -68,9 +68,6 @@ def update_notifications():
     current_user.email_notification_day = request.form.get(
         "email_notification_day", 0, type=int
     )
-    current_user.push_notifications_enabled = (
-        "push_notifications_enabled" in request.form
-    )
     current_user.overdue_reminders_enabled = (
         "overdue_reminders_enabled" in request.form
     )
@@ -86,6 +83,24 @@ def vapid_public_key():
     """VAPID Public Key fuer die Browser-seitige Push-Registrierung."""
     key = current_app.config.get("VAPID_PUBLIC_KEY", "")
     return jsonify({"public_key": key})
+
+
+@settings_bp.route("/push/check", methods=["POST"])
+@login_required
+def push_check():
+    """Prueft ob die gesendete Subscription noch serverseitig registriert ist."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"registered": False})
+
+    endpoint = data.get("endpoint")
+    if not endpoint:
+        return jsonify({"registered": False})
+
+    exists = PushSubscription.query.filter_by(
+        user_id=current_user.id, endpoint=endpoint
+    ).first()
+    return jsonify({"registered": bool(exists)})
 
 
 @settings_bp.route("/push/subscribe", methods=["POST"])

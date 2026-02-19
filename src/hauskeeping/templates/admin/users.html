@@ -6,6 +6,38 @@
 <h3 class="mb-4">Benutzer</h3>
 
 {% if users %}
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <strong><i class="bi bi-bell"></i> Test-Push senden</strong>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label for="push-user" class="form-label">Empfänger</label>
+                <select id="push-user" class="form-select">
+                    {% for user in users %}
+                    <option value="{{ user.id }}">{{ user.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="push-title" class="form-label">Titel</label>
+                <input type="text" id="push-title" class="form-control" value="Test-Benachrichtigung">
+            </div>
+            <div class="col-md-4">
+                <label for="push-body" class="form-label">Nachricht</label>
+                <input type="text" id="push-body" class="form-control" value="Das ist eine Test-Push-Nachricht vom Admin.">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button id="push-send-btn" class="btn btn-primary w-100" onclick="sendTestPush()">
+                    <i class="bi bi-send"></i> Senden
+                </button>
+            </div>
+        </div>
+        <div id="push-result" class="mt-3 d-none"></div>
+    </div>
+</div>
+
 <div class="table-responsive">
     <table class="table table-hover align-middle">
         <thead>
@@ -71,4 +103,49 @@
     <p>Keine Benutzer gefunden.</p>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function sendTestPush() {
+    var btn = document.getElementById("push-send-btn");
+    var result = document.getElementById("push-result");
+    var userId = document.getElementById("push-user").value;
+    var title = document.getElementById("push-title").value.trim();
+    var body = document.getElementById("push-body").value.trim();
+
+    if (!title || !body) {
+        result.className = "mt-3 alert alert-warning";
+        result.textContent = "Titel und Nachricht dürfen nicht leer sein.";
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Senden...';
+    result.className = "mt-3 d-none";
+
+    try {
+        var resp = await fetch("{{ url_for('admin.test_push') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: parseInt(userId), title: title, body: body }),
+        });
+        var data = await resp.json();
+
+        if (data.success) {
+            result.className = "mt-3 alert alert-success";
+            result.textContent = data.message;
+        } else {
+            result.className = "mt-3 alert alert-danger";
+            result.textContent = data.error || "Unbekannter Fehler.";
+        }
+    } catch (err) {
+        result.className = "mt-3 alert alert-danger";
+        result.textContent = "Netzwerkfehler: " + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send"></i> Senden';
+    }
+}
+</script>
 {% endblock %}

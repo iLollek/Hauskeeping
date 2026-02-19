@@ -117,6 +117,16 @@
                     Bitte erlaube sie in den Browser-Einstellungen und lade die Seite neu.
                 </div>
 
+                <div id="push-expired" class="alert alert-warning d-none">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Deine Push-Subscription ist abgelaufen (z.B. nach einem iOS-Update oder langer Inaktivität).
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-warning" onclick="enablePush()">
+                            <i class="bi bi-arrow-clockwise"></i> Push neu aktivieren
+                        </button>
+                    </div>
+                </div>
+
                 <div id="push-controls" class="d-none">
                     <div id="push-status" class="mb-3">
                         <span id="push-status-active" class="d-none">
@@ -155,6 +165,7 @@
     var pushControls = document.getElementById("push-controls");
     var pushNotSupported = document.getElementById("push-not-supported");
     var pushPermDenied = document.getElementById("push-permission-denied");
+    var pushExpired = document.getElementById("push-expired");
     var pushLoading = document.getElementById("push-loading");
     var pushIosHint = document.getElementById("push-ios-hint");
     var btnEnable = document.getElementById("btn-push-enable");
@@ -176,6 +187,7 @@
         pushLoading.classList.add("d-none");
         pushNotSupported.classList.add("d-none");
         pushPermDenied.classList.add("d-none");
+        pushExpired.classList.add("d-none");
         pushControls.classList.add("d-none");
         btnEnable.classList.add("d-none");
         btnDisable.classList.add("d-none");
@@ -189,6 +201,8 @@
             }
         } else if (state === "denied") {
             pushPermDenied.classList.remove("d-none");
+        } else if (state === "expired") {
+            pushExpired.classList.remove("d-none");
         } else if (state === "active") {
             pushControls.classList.remove("d-none");
             statusActive.classList.remove("d-none");
@@ -227,7 +241,22 @@
             var registration = await navigator.serviceWorker.ready;
             var subscription = await registration.pushManager.getSubscription();
             if (subscription) {
-                showState("active");
+                // Pruefen ob die Subscription noch serverseitig existiert
+                try {
+                    var checkResp = await fetch("{{ url_for('settings.push_check') }}", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ endpoint: subscription.endpoint }),
+                    });
+                    var checkData = await checkResp.json();
+                    if (checkData.registered) {
+                        showState("active");
+                    } else {
+                        showState("expired");
+                    }
+                } catch (_) {
+                    showState("active");
+                }
             } else {
                 showState("inactive");
             }

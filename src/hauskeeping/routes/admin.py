@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from ..extensions import db
@@ -122,3 +122,44 @@ def delete_user(user_id):
 
     flash(f"Benutzer '{user.username}' wurde entfernt.", "success")
     return redirect(url_for("admin.user_list"))
+
+
+@admin_bp.route("/push/test", methods=["POST"])
+@hausmeister_required
+def test_push():
+    """
+    Sendet eine Test-Push-Benachrichtigung an einen User.
+
+    Erwartet JSON: {"user_id": int, "title": str, "body": str}
+    """
+    from ..models.push_subscription import PushSubscription
+    from ..services.push_service import send_push_to_user
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Keine Daten erhalten."}), 400
+
+    user_id = data.get("user_id")
+    title = (data.get("title") or "").strip()
+    body = (data.get("body") or "").strip()
+
+    if not user_id or not title or not body:
+        return jsonify({"error": "user_id, title und body sind erforderlich."}), 400
+
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "Benutzer nicht gefunden."}), 404
+
+    sub_count = PushSubscription.query.filter_by(user_id=user.id).count()
+    if sub_count == 0:
+        return jsonify({"error": f"{user.username} hat keine aktiven Push-Subscriptions."}), 400
+
+    if not user.push_notifications_enabled:
+        return jsonify({"error": f"{user.username} hat Push-Benachrichtigungen deaktiviert."}), 400
+
+    try:
+        send_push_to_user(user, title, body)
+    except Exception as exc:
+        return jsonify({"error": f"Sendefehler: {exc}"}), 500
+
+    return jsonify({"success": True, "message": f"Push an {user.username} gesendet ({sub_count} Gerät(e))."})

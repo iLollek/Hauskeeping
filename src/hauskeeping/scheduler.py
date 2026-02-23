@@ -4,7 +4,8 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from sqlalchemy import or_
+from sqlalchemy import or_, update
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -86,8 +87,12 @@ def _run_recurrence_spawn(app):
     Erzeugt wiederkehrende Aufgaben fuer die aktuelle Woche, sofern noch
     nicht geschehen.
 
-    Idempotent: Wird die Funktion mehrfach in derselben Woche aufgerufen,
-    passiert beim zweiten Mal nichts (State-Check via app_state-Tabelle).
+    Idempotent und Race-Condition-sicher: Die Woche wird zuerst atomar via
+    bedingtem UPDATE/INSERT in der app_state-Tabelle beansprucht (commit),
+    bevor Tasks erstellt werden. Laufen mehrere Prozesse (z.B. Gunicorn-Worker)
+    gleichzeitig, bekommt nur einer rowcount=1 zurueck – alle anderen beenden
+    die Funktion fruehzeitig ohne Duplikate zu erzeugen.
+
     Downtime-sicher: Beim Startup wird sie sofort ausgefuehrt, sodass
     ein verpasster Montag beim naechsten App-Start aufgeholt wird.
     """
@@ -109,11 +114,51 @@ def _run_recurrence_spawn(app):
 
         today = date.today()
         monday = today - timedelta(days=today.weekday())
+        monday_str = str(monday)
 
-        # Wurde diese Woche bereits verarbeitet?
-        state = db.session.get(AppState, "last_recurrence_monday")
-        if state and date.fromisoformat(state.value) >= monday:
-            return
+        # --- Atomisches "Claim-First"-Pattern ---
+        # Schritt 1: Versuche den vorhandenen Eintrag bedingt zu aktualisieren.
+        # ISO-Datumsstrings sortieren lexikografisch identisch zu chronologisch,
+        # daher ist der String-Vergleich korrekt.
+        # Der UPDATE ist auf Datenbankebene atomar (Row-Level-Lock bei PostgreSQL,
+        # File-Lock bei SQLite), sodass bei mehreren gleichzeitigen Prozessen nur
+        # einer rowcount=1 zurueckbekommt.
+        result = db.session.execute(
+            update(AppState)
+            .where(AppState.key == "last_recurrence_monday")
+            .where(AppState.value < monday_str)
+            .values(value=monday_str)
+        )
+        db.session.commit()
+
+        if result.rowcount == 0:
+            # Entweder existiert noch kein Eintrag (erste Ausfuehrung ueberhaupt)
+            # oder die Woche ist bereits verarbeitet.
+            state = db.session.get(AppState, "last_recurrence_monday")
+            if state is None:
+                # Schritt 2a: Ersten Eintrag anlegen – bei konkurrierenden
+                # Prozessen schlaegt der zweite INSERT mit IntegrityError fehl.
+                try:
+                    db.session.add(AppState(key="last_recurrence_monday", value=monday_str))
+                    db.session.commit()
+                except IntegrityError:
+                    db.session.rollback()
+                    logger.info(
+                        "Recurrence-Spawn uebersprungen: Woche %s bereits von "
+                        "einem anderen Prozess beansprucht.",
+                        monday_str,
+                    )
+                    return
+            else:
+                # Schritt 2b: Eintrag existiert und ist bereits >= monday.
+                logger.debug(
+                    "Recurrence-Spawn uebersprungen: Woche %s bereits verarbeitet.",
+                    monday_str,
+                )
+                return
+
+        # Ab hier hat exklusiv dieser Prozess die Woche beansprucht.
+        logger.info("Recurrence-Spawn gestartet fuer Woche ab %s.", monday_str)
 
         # Alle Template-Tasks: haben recurrence_rule, aber keinen parent
         templates = Task.query.filter(
@@ -123,8 +168,8 @@ def _run_recurrence_spawn(app):
 
         for template in templates:
             for occ_date in _get_week_occurrences(template, monday):
-                # Duplikat-Check: existiert schon eine Instanz (oder das Template
-                # selbst) fuer dieses Datum?
+                # Sicherheits-Duplikat-Check (z.B. falls Template-due_date
+                # mit einem Vorkommen uebereinstimmt)
                 exists = Task.query.filter(
                     or_(
                         Task.id == template.id,
@@ -152,15 +197,8 @@ def _run_recurrence_spawn(app):
                         occ_date,
                     )
 
-        # Woche als verarbeitet markieren
-        if state is None:
-            state = AppState(key="last_recurrence_monday", value=str(monday))
-            db.session.add(state)
-        else:
-            state.value = str(monday)
-
         db.session.commit()
-        logger.info("Recurrence-Spawn abgeschlossen fuer Woche ab %s.", monday)
+        logger.info("Recurrence-Spawn abgeschlossen fuer Woche ab %s.", monday_str)
 
 
 def _get_week_occurrences(template, monday):

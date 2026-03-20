@@ -11,6 +11,9 @@ class Config:
 
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
 
+    # "Angemeldet bleiben"-Cookie: 30 Tage
+    REMEMBER_COOKIE_DURATION = 60 * 60 * 24 * 30  # Sekunden
+
     # Datenbank
     _db_url = os.getenv("DATABASE_URL", "sqlite:///hauskeeping.db")
     if _db_url.startswith("postgres://"):

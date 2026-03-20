@@ -24,9 +24,10 @@ def login():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
 
+        remember = request.form.get("remember") == "on"
         user = User.query.filter_by(username=username).first()
         if user and bcrypt.check_password_hash(user.password_hash, password):
-            login_user(user)
+            login_user(user, remember=remember)
             next_page = request.args.get("next")
             return redirect(next_page or url_for("main.dashboard"))
 

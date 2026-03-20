@@ -241,6 +241,45 @@ def _get_week_occurrences(template, monday):
 
 
 # ---------------------------------------------------------------------------
+# Hilfsfunktion: Atomisches Claim-First fuer tagesbasierte Jobs
+# ---------------------------------------------------------------------------
+
+def _claim_daily_job(db, AppState, key, today_str):
+    """
+    Beansprucht einen tagesbasierten Job atomar fuer genau einen Worker.
+
+    Gibt True zurueck wenn dieser Prozess den Job ausfuehren darf,
+    False wenn ein anderer Worker ihn bereits beansprucht hat.
+
+    Verwendet dasselbe atomische UPDATE-Pattern wie _run_recurrence_spawn.
+    """
+    result = db.session.execute(
+        update(AppState)
+        .where(AppState.key == key)
+        .where(AppState.value < today_str)
+        .values(value=today_str)
+    )
+    db.session.commit()
+
+    if result.rowcount == 1:
+        return True
+
+    state = db.session.get(AppState, key)
+    if state is None:
+        try:
+            db.session.add(AppState(key=key, value=today_str))
+            db.session.commit()
+            return True
+        except IntegrityError:
+            db.session.rollback()
+            logger.info("Job '%s' uebersprungen: bereits von anderem Prozess beansprucht.", key)
+            return False
+
+    logger.debug("Job '%s' uebersprungen: Datum %s bereits verarbeitet.", key, today_str)
+    return False
+
+
+# ---------------------------------------------------------------------------
 # Bestehende Jobs
 # ---------------------------------------------------------------------------
 
@@ -258,10 +297,15 @@ def _run_weekly_email_summary(app):
 def _run_due_today_push(app):
     """Sendet Push-Benachrichtigungen fuer heute faellige Aufgaben."""
     with app.app_context():
+        from .extensions import db
+        from .models.app_state import AppState
         from .models.task import Task
         from .services.push_service import send_push_to_user
 
         today = datetime.now(timezone.utc).date()
+
+        if not _claim_daily_job(db, AppState, "last_due_today_push", str(today)):
+            return
 
         tasks = (
             Task.query.filter(
@@ -299,11 +343,15 @@ def _run_overdue_push(app):
     """Sendet Push-Erinnerungen fuer ueberfaellige Aufgaben."""
     with app.app_context():
         from .extensions import db
+        from .models.app_state import AppState
         from .models.task import Task
         from .models.user import User
         from .services.push_service import send_push_to_user
 
         today = datetime.now(timezone.utc).date()
+
+        if not _claim_daily_job(db, AppState, "last_overdue_push", str(today)):
+            return
 
         tasks = (
             Task.query.filter(
